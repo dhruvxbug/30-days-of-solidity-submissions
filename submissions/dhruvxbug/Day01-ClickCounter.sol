@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.8.31; //our solidity version 
+pragma solidity ^0.8.30; //our solidity version 
 
 contract ClickCounter{
     uint256 public counter;
@@ -13,10 +13,12 @@ contract ClickCounter{
       emit Clicked(msg.sender ,counter);
     }
     function reset() public{
-      counter =0;
+      uint256 userClicks = ClicksByUser[msg.sender];
+      counter -= userClicks;
+      ClicksByUser[msg.sender]=0;
     }
     function decrement() public{
-      require(counter>0 , "counter is already at 0");
+      require(ClicksByUser[msg.sender]>0 , "caller has no clciks to decrement");
       counter--;
       ClicksByUser[msg.sender]--;
     }
