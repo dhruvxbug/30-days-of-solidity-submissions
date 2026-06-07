@@ -242,6 +242,34 @@ contract EtherPiggyBank is ReentrancyGuard{
         emit EmergencyWithdrawal(msg.sender, amountToWithdraw, penalty);
     }
 
+    function collectPenalties() public OnlyBankManager nonReentrant{
+        uint256 contractBalance = address(this).balance;
+        uint256 userTotalBalance = _getTotalUserBalance();
+
+        uint256 penaltyFunds = contractBalance - userTotalBalance;
+        require(penaltyFunds > 0, "No penalty funds available");
+        
+        (bool success, ) = bankManager.call{value: penaltyFunds}("");
+        require(success, "Transfer failed");
+    }
+
+    function _getTotalUserBalance() internal view returns(uint256) {
+        uint256 total = 0;
+        for(uint i = 0; i < members.length; i++) {
+            total += balance[members[i]];
+        }
+        return total;
+    }
+
+    function checkContractBalance() public view returns(uint256) {
+        return address(this).balance;
+    }
+
+    function checkUserBalance() public view onlyRegisteredMember returns(uint256) {
+        return calculatePendingInterest(msg.sender) + balance[msg.sender];
+        _claimInterest(msag.sender);
+    }
+
     function withdrawEther(uint256 _amount) public nonReentrant onlyRegisteredMember{
         require(_amount >0,"amount cannot be 0");
         require(balance[msg.sender] >= _amount, "Cannot wityhdraw more than your acc balance");
@@ -259,4 +287,18 @@ contract EtherPiggyBank is ReentrancyGuard{
        return balance[msg.sender];
     }
 
+    function getUserTotalValue(address _user) public view onlyRegisteredMember returns(uint256) {
+        uint256 totalLocked = 0;
+        for(uint i = 0; i < timeLocks[_user].length; i++) {
+            if(!timeLocks[_user][i].withdrawn) {
+                totalLocked += timeLocks[_user][i].amount;
+            }
+        }
+        
+        return calculatePendingInterest(_user) + balance[_user] + totalLocked;
+    }
+
+    receive() external payable {
+        revert("Use deposit() function to add funds");
+    }
 }
